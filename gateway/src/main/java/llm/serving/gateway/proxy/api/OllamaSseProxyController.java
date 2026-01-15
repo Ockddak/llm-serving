@@ -20,7 +20,7 @@ public class OllamaSseProxyController {
 
     @GetMapping(
             value = "/llm/stream",
-            produces = MediaType.TEXT_EVENT_STREAM_VALUE // ollama 에서 응답이 오면 전달받은 응답을 바로 클라이언트에 전달해
+            produces = MediaType.TEXT_EVENT_STREAM_VALUE // ollama 에서 응답이 오면 전달받은 응답을 바로 클라이언트에 전달
     )
     public Flux<String> stream() {
 
@@ -34,6 +34,7 @@ public class OllamaSseProxyController {
                       "stream": true
                     }
                     """)
+                // stream: 응답 시, 문자열 전체가 아닌 토큰 단위로 응답
                 .retrieve()
                 .bodyToFlux(String.class);
     }
