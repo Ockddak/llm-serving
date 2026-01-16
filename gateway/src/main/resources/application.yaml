@@ -1,0 +1,16 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+
+  cloud:
+    gateway:
+      routes:
+        - id: ollama-route
+          uri: http://localhost:11434
+          predicates:
+            - Path=/ollama/**
+          filters:
+            - StripPrefix=1

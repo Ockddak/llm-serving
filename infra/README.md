@@ -57,7 +57,7 @@ docker compose up -d
 - 모델은 컨테이너 볼륨에 저장됨
 - REST API를 통해 외부 애플리케이션과 연동
 
-## 6. 포트 및 접속 정보
+## 포트 및 접속 정보
 
 | 서비스 | 주소 |
 |------|------|
@@ -65,3 +65,18 @@ docker compose up -d
 | PostgreSQL | localhost:5432 |
 | Kafka | localhost:9092 |
 | Ollama | http://localhost:11434 |
+
+## 유의 사항
+- Ollama 컨테이너 생성 시, 모델이 없어 모델을 추가하는 작업이 필요
+  - 모델 확인
+  ``` bash
+  curl http://localhost:11434/api/tags
+  
+  # 응답 예시 (모델이 없음)
+  {"models":[]} 
+
+  # 응답 예시 (모델이 있음)
+  {"models":[{"name":"llama3.2:latest","model":"llama3.2:latest","modified_at":"2026-01-15T05:49:49.34131217Z","size":2019393189,"digest":"a80c4f17acd55265feec403c7aef86be0c25983ab279d83f3bcd3abbcb5b8b72","details":{"parent_model":"","format":"gguf","family":"llama","families":["llama"],"parameter_size":"3.2B","quantization_level":"Q4_K_M"}}]}
+  ```
+  - 모델이 없을 경우 모델 추가
+  > docker exec -it ollama ollama pull llama3.2
