@@ -14,3 +14,9 @@ spring:
             - Path=/ollama/**
           filters:
             - StripPrefix=1
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      # password: 비밀번호 사용 시, 나중에 추가
