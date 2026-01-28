@@ -29,7 +29,7 @@ public class OllamaSseProxyController {
             produces = MediaType.TEXT_EVENT_STREAM_VALUE // ollama 에서 응답이 오면 전달받은 응답을 바로 클라이언트에 전달
     )
     public Flux<String> stream() {
-
+        log.info("/llm/stream START");
         Flux<String> ollamaStream = ollamaWebClient.post()
                 .uri("/api/generate")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -42,14 +42,14 @@ public class OllamaSseProxyController {
                         """)
                 // stream: 응답 시, 문자열 전체가 아닌 토큰 단위로 응답
                 .retrieve()
-                .bodyToFlux(String.class)
-                .timeout(Duration.ofSeconds(30)); //30초 동안 ollama에서 아무 데이터가 안오면 에러 발생
+                .bodyToFlux(String.class);
 
         Flux<String> keepAlive = Flux.interval(Duration.ofSeconds(10))
                 .map(tick -> ": ping\n\n") // 클라이언트와 gateway 사이의 연결 유지를 위해 주기적으로 ping을 전달
                 .takeUntilOther(ollamaStream.ignoreElements()); //ollamaStream이 완료되는 순간 keepAlive도 같이 종료
 
         return Flux.merge(ollamaStream, keepAlive)
+                .timeout(Duration.ofSeconds(30)) //30초 동안 ollama에서 아무 데이터가 안오면 에러 발생
                 .doOnCancel(() -> {
                     log.info("Client disconnected - cancel Ollama request"); //클라이언트가 연결을 끊은 경우 요청 종료
                 })
