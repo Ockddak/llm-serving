@@ -7,10 +7,14 @@ import org.slf4j.LoggerFactory;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
+import org.springframework.core.io.buffer.DataBuffer;
+import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.server.reactive.ServerHttpRequestDecorator;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.nio.charset.StandardCharsets;
@@ -51,14 +55,15 @@ public class TpmLimitFilter implements GlobalFilter, Ordered {
             return reject(exchange, "CLIENT_ID_MISSING");
         }
 
-        return exchange.getRequest().getBody()
-                .next() // body를 한 번만 소비 (간단한 예시)
+        return DataBufferUtils.join(exchange.getRequest().getBody())
                 .flatMap(dataBuffer -> {
+                    byte[] bytes = new byte[dataBuffer.readableByteCount()];
+                    dataBuffer.read(bytes);
+                    DataBufferUtils.release(dataBuffer);
 
-                    String body = StandardCharsets.UTF_8.decode(dataBuffer.asByteBuffer()).toString();
-                    String model = resolveModel(body);
+                    String body = new String(bytes, StandardCharsets.UTF_8);
+
                     long tokens = jtokService.estimateTokensFromBody(body);
-
                     String minute = currentMinute();
 
                     String globalKey = "tpm:global:" + minute;
@@ -89,9 +94,22 @@ public class TpmLimitFilter implements GlobalFilter, Ordered {
                                 if (clientResult < 0) {
                                     return reject(exchange, "CLIENT_TPM_EXCEEDED");
                                 }
+                                ServerHttpRequestDecorator decoratedRequest = new ServerHttpRequestDecorator(exchange.getRequest()) {
+                                    @Override
+                                    public Flux<DataBuffer> getBody() {
+                                        DataBuffer buffer = exchange.getResponse()
+                                                .bufferFactory()
+                                                .wrap(bytes);
+                                        return Flux.just(buffer);
+                                    }
+                                };
 
+                                ServerWebExchange mutatedExchange =
+                                        exchange.mutate()
+                                                .request(decoratedRequest)
+                                                .build();
                                 // 통과
-                                return chain.filter(exchange);
+                                return chain.filter(mutatedExchange);
                             });
                 });
     }
